@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft 3D Mobile - Big Buttons Edition</title>
+    <style>
+        * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; box-sizing: border-box; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #87CEEB; }
+        
+        #loading-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #1e1e24, #2a2a36); color: white; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        .loader-bar-bg { width: 280px; height: 18px; background: #111; border: 2px solid #555; border-radius: 9px; overflow: hidden; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .loader-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); transition: width 0.1s; }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 10;
+        }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 2px #000; }
+        #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
+        #crosshair::after { top: 0; left: 8px; width: 2px; height: 18px; }
+
+        /* HOTBAR NÚT TO */
+        #hotbar {
+            position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px;
+            background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); padding: 8px; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.3); z-index: 10;
+        }
+        .slot {
+            width: 50px; height: 50px; border: 2px solid #555; border-radius: 8px; display: flex;
+            align-items: flex-end; justify-content: center; font-weight: bold; color: white; font-size: 10px;
+            text-shadow: 1px 1px 2px #000; padding-bottom: 3px; background-color: rgba(255, 255, 255, 0.08); position: relative;
+        }
+        .slot.active { border-color: #ffd700; transform: scale(1.1); box-shadow: 0 0 12px rgba(255, 215, 0, 0.9); }
+
+        /* JOYSTICK NÚT TO */
+        #joystick-zone {
+            position: absolute; bottom: 20px; left: 20px; width: 140px; height: 140px;
+            background: rgba(255, 255, 255, 0.12); border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 50%; z-index: 10; backdrop-filter: blur(2px);
+        }
+        #joystick-knob {
+            position: absolute; top: 42px; left: 42px; width: 56px; height: 56px;
+            background: rgba(255, 255, 255, 0.45); border: 2px solid rgba(255, 255, 255, 0.85); border-radius: 50%; pointer-events: none;
+        }
+
+        /* NÚT HÀNH ĐỘNG PHÓNG TO */
+        .action-btn {
+            position: absolute; background: rgba(0, 0, 0, 0.45); border: 2px solid rgba(255, 255, 255, 0.35);
+            color: white; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 50%; z-index: 10; font-size: 20px; font-weight: bold; backdrop-filter: blur(4px); box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+        .action-btn:active, .action-btn.active { background: rgba(255, 255, 255, 0.45); border-color: #ffd700; transform: scale(0.92); }
+
+        #btn-jump     { bottom: 20px; right: 20px; width: 80px; height: 80px; font-size: 28px; }
+        #btn-sprint   { bottom: 20px; right: 110px; width: 60px; height: 60px; font-size: 22px; }
+        #btn-sneak    { bottom: 20px; right: 180px; width: 60px; height: 60px; font-size: 22px; }
+        #btn-inv      { bottom: 20px; right: 250px; width: 60px; height: 60px; font-size: 22px; background: rgba(100,80,200,0.5); }
+        
+        #btn-break    { bottom: 110px; right: 20px; width: 65px; height: 65px; font-size: 24px; background: rgba(180,40,40,0.6); }
+        #btn-place    { bottom: 110px; right: 95px; width: 65px; height: 65px; font-size: 24px; background: rgba(40,160,40,0.6); }
+        #btn-detonate { bottom: 185px; right: 20px; width: 65px; height: 65px; font-size: 24px; background: rgba(230,100,0,0.6); }
+        
+        #btn-settings { top: 15px; right: 15px; width: 50px; height: 50px; border-radius: 12px; font-size: 22px; }
+
+        #settings-overlay, #inventory-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(5px); z-index: 100; display: none;
+            flex-direction: column; align-items: center; justify-content: center; color: white;
+        }
+        .panel-box { width: 310px; background: #222; border: 2px solid #555; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+        .panel-box input[type=range] { width: 100%; margin: 15px 0; }
+        .panel-btn { width: 100%; padding: 12px; background: #4CAF50; border: none; color: white; font-weight: bold; border-radius: 8px; margin-top: 10px; cursor: pointer; font-size: 15px; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <h2 style="margin: 0; font-size: 22px; letter-spacing: 1px;">ĐANG TẢI THẾ GIỚI...</h2>
+        <div class="loader-bar-bg"><div id="loader-fill" class="loader-bar-fill"></div></div>
+        <p id="loader-text" style="font-size: 13px; color: #aaa; margin-top: 8px;">0%</p>
+    </div>
+
+    <div id="crosshair"></div>
+
+    <div id="hotbar">
+        <div class="slot active" id="slot-1" onclick="selectHotbarSlot(1)"><span>TNT</span></div>
+        <div class="slot" id="slot-2" onclick="selectHotbarSlot(2)"><span>Cỏ</span></div>
+        <div class="slot" id="slot-3" onclick="selectHotbarSlot(3)"><span>Đất</span></div>
+        <div class="slot" id="slot-4" onclick="selectHotbarSlot(4)"><span>Đá</span></div>
+        <div class="slot" id="slot-5" onclick="selectHotbarSlot(5)"><span>Gỗ</span></div>
+    </div>
+
+    <div id="joystick-zone"><div id="joystick-knob"></div></div>
+
+    <div id="btn-settings" class="action-btn" onclick="toggleSettings()">⚙️</div>
+    <div id="btn-break" class="action-btn" onclick="breakBlock()"><span>⛏️</span></div>
+    <div id="btn-place" class="action-btn"><span>🧱</span></div>
+    <div id="btn-detonate" class="action-btn" onclick="detonateTNT()"><span>💥</span></div>
+    <div id="btn-inv" class="action-btn" onclick="toggleInventory()">🎒</div>
+    <div id="btn-sprint" class="action-btn">⚡</div>
+    <div id="btn-sneak" class="action-btn">🧘</div>
+    <div id="btn-jump" class="action-btn">🚀</div>
+
+    <div id="settings-overlay">
+        <div class="panel-box">
+            <h3 style="margin-top:0;">CÀI ĐẶT ĐỘ NHẠY</h3>
+            <label>Độ nhạy xoay: <span id="sens-value">0.005</span></label>
+            <input type="range" id="sens-slider" min="0.001" max="0.015" step="0.001" value="0.005" oninput="updateSensitivity(this.value)">
+            <button class="panel-btn" onclick="toggleSettings()">LƯU & ĐÓNG</button>
+        </div>
+    </div>
+
+    <div id="inventory-overlay">
+        <div class="panel-box">
+            <h3>TÚI ĐỒ HD</h3>
+            <p style="font-size: 13px; color: #ccc;">Các nút bấm đã được kích thước tối đa giúp bạn thao tác dễ dàng nhất!</p>
+            <button class="panel-btn" style="background: #a33;" onclick="toggleInventory()">ĐÓNG</button>
+        </div>
+    </div>
+
+    <script>
+        let sensitivity = 0.005;
+        function updateSensitivity(val) {
+            sensitivity = parseFloat(val);
+            document.getElementById('sens-value').innerText = val;
+        }
+        function toggleSettings() {
+            const el = document.getElementById('settings-overlay');
+            el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+        }
+        function toggleInventory() {
+            const el = document.getElementById('inventory-overlay');
+            el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+        }
+
+        const blockTypes = {
+            1: { name: 'TNT', type: 'tnt' },
+            2: { name: 'Cỏ', type: 'grass' },
+            3: { name: 'Đất', type: 'dirt' },
+            4: { name: 'Đá', type: 'stone' },
+            5: { name: 'Gỗ', type: 'wood' },
+            6: { name: 'Bedrock', type: 'bedrock' }
+        };
+
+        function generateHDTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32; canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+
+            function drawPixelNoise(baseColor, variation) {
+                ctx.fillStyle = baseColor;
+                ctx.fillRect(0, 0, 32, 32);
+                for (let x = 0; x < 32; x += 2) {
+                    for (let y = 0; y < 32; y += 2) {
+                        const shade = (Math.random() - 0.5) * variation;
+                        ctx.fillStyle = shade > 0 ? `rgba(255,255,255,${shade})` : `rgba(0,0,0,${Math.abs(shade)})`;
+                        ctx.fillRect(x, y, 2, 2);
+                    }
+                }
+            }
+
+            if (type === 'grass') {
+                drawPixelNoise('#8b5a2b', 0.15);
+                ctx.fillStyle = '#4e9e2e'; ctx.fillRect(0, 0, 32, 10);
+                for(let x=0; x<32; x+=2) {
+                    const h = Math.floor(Math.random()*6);
+                    ctx.fillRect(x, 8, 2, h);
+                }
+            } else if (type === 'dirt') {
+                drawPixelNoise('#734823', 0.25);
+            } else if (type === 'stone') {
+                drawPixelNoise('#787878', 0.3);
+            } else if (type === 'wood') {
+                drawPixelNoise('#5c3a21', 0.15);
+                ctx.fillStyle = '#3d2514';
+                ctx.fillRect(0, 6, 32, 3); ctx.fillRect(0, 18, 32, 3); ctx.fillRect(0, 27, 32, 2);
+            } else if (type === 'bedrock') {
+                drawPixelNoise('#222222', 0.5);
+            } else if (type === 'tnt') {
+                drawPixelNoise('#d12323', 0.2);
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 10, 32, 12);
+                ctx.fillStyle = '#000000'; ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'center'; ctx.fillText('TNT', 16, 19);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
+            return texture;
+        }
+
+        const textures = {};
+        for(let id in blockTypes) textures[id] = generateHDTexture(blockTypes[id].type);
+
+        let hotbarSlots = [1, 2, 3, 4, 5];
+        let activeHotbarIndex = 0;
+
+        function selectHotbarSlot(index) {
+            activeHotbarIndex = index - 1;
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`slot-${i}`).classList.toggle('active', i === index);
+            }
+        }
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.025);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 120);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        sunLight.position.set(40, 80, 40);
+        scene.add(sunLight);
+
+        const materials = {};
+        for(let key in textures) {
+            materials[key] = new THREE.MeshLambertMaterial({ map: textures[key] });
+        }
+        const tntWhiteMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+
+        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        const worldBlocks = new Map();
+        function getBlockKey(x, y, z) { return `${x},${y},${z}`; }
+
+        function createBlock(x, y, z, type) {
+            const key = getBlockKey(x, y, z);
+            if (worldBlocks.has(key)) return;
+            const mesh = new THREE.Mesh(boxGeo, materials[type]);
+            mesh.position.set(x, y, z);
+            mesh.userData = { key: key, x: x, y: y, z: z, type: type };
+            scene.add(mesh);
+            worldBlocks.set(key, mesh);
+        }
+
+        function removeBlock(key) {
+            if (worldBlocks.has(key)) {
+                scene.remove(worldBlocks.get(key));
+                worldBlocks.delete(key);
+            }
+        }
+
+        const radius = 18;
+        let totalBlocksToCreate = (radius * 2 + 1) * (radius * 2 + 1);
+        let createdBlocks = 0;
+
+        function buildWorldAsync() {
+            let x = -radius;
+            let z = -radius;
+
+            function processChunk() {
+                let count = 0;
+                while (x <= radius && count < 450) {
+                    createBlock(x, 0, z, 6); // Bedrock
+                    for (let y = 1; y <= 6; y++) createBlock(x, y, z, 4); // Đá
+                    createBlock(x, 7, z, 3); createBlock(x, 8, z, 3); // Đất
+                    createBlock(x, 9, z, 2); // Cỏ
+
+                    z++;
+                    if (z > radius) { z = -radius; x++; }
+                    createdBlocks++;
+                    count++;
+                }
+
+                let percent = Math.min(100, Math.floor((createdBlocks / totalBlocksToCreate) * 100));
+                document.getElementById('loader-fill').style.width = percent + '%';
+                document.getElementById('loader-text').innerText = percent + '%';
+
+                if (x <= radius) {
+                    setTimeout(processChunk, 0);
+                } else {
+                    document.getElementById('loading-screen').style.display = 'none';
+                }
+            }
+            processChunk();
+        }
+        buildWorldAsync();
+
+        const player = {
+            radius: 0.3, height: 1.5,
+            pos: new THREE.Vector3(0, 12, 0), vel: new THREE.Vector3(0, 0, 0),
+            isGrounded: false, isSprinting: false
+        };
+
+        function checkCollision(pos) {
+            const minX = Math.floor(pos.x - player.radius), maxX = Math.floor(pos.x + player.radius);
+            const minY = Math.floor(pos.y - player.height), maxY = Math.floor(pos.y);
+            const minZ = Math.floor(pos.z - player.radius), maxZ = Math.floor(pos.z + player.radius);
+
+            for (let x = minX; x <= maxX; x++) {
+                for (let y = minY; y <= maxY; y++) {
+                    for (let z = minZ; z <= maxZ; z++) {
+                        if (worldBlocks.has(getBlockKey(x, y, z))) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        let pitch = 0, yaw = 0, touchLookId = null, touchStartX = 0, touchStartY = 0;
+        const raycaster = new THREE.Raycaster();
+
+        window.addEventListener('touchstart', (e) => {
+            if (document.getElementById('settings-overlay').style.display === 'flex' || 
+                document.getElementById('inventory-overlay').style.display === 'flex') return;
+
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.clientX > window.innerWidth / 2 && touchLookId === null) {
+                    touchLookId = touch.identifier;
+                    touchStartX = touch.clientX; touchStartY = touch.clientY;
+                }
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === touchLookId) {
+                    yaw -= (touch.clientX - touchStartX) * sensitivity;
+                    pitch -= (touch.clientY - touchStartY) * sensitivity;
+                    pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+                    touchStartX = touch.clientX; touchStartY = touch.clientY;
+                }
+            }
+        });
+
+        window.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchLookId) touchLookId = null;
+            }
+        });
+
+        function getTargetBlock() {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(Array.from(worldBlocks.values()));
+            if (intersects.length > 0 && intersects[0].distance < 6) return intersects[0];
+            return null;
+        }
+
+        let isPlacingHold = false;
+        const placeBtn = document.getElementById('btn-place');
+        placeBtn.addEventListener('touchstart', (e) => { e.stopPropagation(); isPlacingHold = true; placeBlock(); });
+        placeBtn.addEventListener('touchend', (e) => { e.stopPropagation(); isPlacingHold = false; });
+
+        function placeBlock() {
+            const hit = getTargetBlock();
+            if (hit) {
+                const pos = hit.object.position.clone().add(hit.face.normal);
+                createBlock(pos.x, pos.y, pos.z, hotbarSlots[activeHotbarIndex]);
+            }
+        }
+
+        function breakBlock() {
+            const hit = getTargetBlock();
+            if (hit) {
+                const block = hit.object;
+                if (block.userData.type === 1) igniteTNTBlock(block);
+                else removeBlock(block.userData.key);
+            }
+        }
+
+        const activeTNTs = [];
+        const flyingDebris = [];
+
+        function igniteTNTBlock(tntMesh, initialVelocity = null, fuseTime = 2.5) {
+            const pos = tntMesh.position.clone();
+            removeBlock(tntMesh.userData.key);
+
+            const entity = new THREE.Mesh(boxGeo, materials[1]);
+            entity.position.copy(pos);
+            scene.add(entity);
+
+            const vel = initialVelocity ? initialVelocity : new THREE.Vector3((Math.random()-0.5)*1.5, 3.5, (Math.random()-0.5)*1.5);
+
+            activeTNTs.push({
+                mesh: entity,
+                vel: vel,
+                fuse: fuseTime,
+                flashTimer: 0
+            });
+        }
+
+        function explodeTNTEntity(tntEntity) {
+            const epicenter = tntEntity.mesh.position.clone();
+            scene.remove(tntEntity.mesh);
+
+            const blastRadius = 5.0;
+            const keysToRemove = [];
+
+            worldBlocks.forEach((b) => {
+                const dist = b.position.distanceTo(epicenter);
+                if (dist <= blastRadius) {
+                    if (b.userData.type === 1) {
+                        const dir = b.position.clone().sub(epicenter).normalize();
+                        const pushForce = Math.max(5, (blastRadius - dist) * 4);
+                        const pushVel = dir.multiplyScalar(pushForce).add(new THREE.Vector3(0, 3, 0));
+                        igniteTNTBlock(b, pushVel, 0.5 + Math.random()*0.8);
+                    } else if (b.userData.type !== 6) {
+                        keysToRemove.push(b.userData.key);
+                        if (flyingDebris.length < 50) {
+                            const flyMesh = b.clone();
+                            scene.add(flyMesh);
+                            const dir = b.position.clone().sub(epicenter).normalize();
+                            flyMesh.userData = {
+                                vel: dir.multiplyScalar(9).add(new THREE.Vector3(0, 4, 0)),
+                                rotVel: new THREE.Vector3(Math.random()*4, Math.random()*4, Math.random()*4),
+                                life: 1.0
+                            };
+                            flyingDebris.push(flyMesh);
+                        }
+                    }
+                }
+            });
+            keysToRemove.forEach(k => removeBlock(k));
+
+            activeTNTs.forEach(otherTNT => {
+                if (otherTNT !== tntEntity) {
+                    const dist = otherTNT.mesh.position.distanceTo(epicenter);
+                    if (dist <= blastRadius && dist > 0.1) {
+                        const dir = otherTNT.mesh.position.clone().sub(epicenter).normalize();
+                        const pushForce = Math.max(6, (blastRadius - dist) * 5);
+                        otherTNT.vel.add(dir.multiplyScalar(pushForce)).add(new THREE.Vector3(0, 2, 0));
+                        otherTNT.fuse = Math.min(otherTNT.fuse, 0.4);
+                    }
+                }
+            });
+        }
+
+        function detonateTNT() {
+            const hit = getTargetBlock();
+            if (hit && hit.object.userData.type === 1) {
+                igniteTNTBlock(hit.object);
+            }
+        }
+
+        // JOYSTICK BẬT KÍCH THƯỚC TO
+        const joyZone = document.getElementById('joystick-zone');
+        const joyKnob = document.getElementById('joystick-knob');
+        let moveVector = { x: 0, y: 0 }, joyTouchId = null;
+
+        joyZone.addEventListener('touchstart', (e) => { e.stopPropagation(); joyTouchId = e.changedTouches[0].identifier; });
+        window.addEventListener('touchmove', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === joyTouchId) {
+                    const rect = joyZone.getBoundingClientRect();
+                    let dx = touch.clientX - (rect.left + rect.width / 2), dy = touch.clientY - (rect.top + rect.height / 2);
+                    const dist = Math.min(Math.hypot(dx, dy), 42);
+                    const angle = Math.atan2(dy, dx);
+                    dx = Math.cos(angle) * dist; dy = Math.sin(angle) * dist;
+                    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+                    moveVector = { x: dx / 42, y: dy / 42 };
+                }
+            }
+        });
+        window.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joyTouchId) {
+                    joyKnob.style.transform = `translate(0px, 0px)`;
+                    moveVector = { x: 0, y: 0 }; joyTouchId = null;
+                }
+            }
+        });
+
+        const sprintBtn = document.getElementById('btn-sprint');
+        sprintBtn.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            player.isSprinting = !player.isSprinting;
+            sprintBtn.classList.toggle('active', player.isSprinting);
+        });
+
+        document.getElementById('btn-jump').addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            if (player.isGrounded) { player.vel.y = 6.5; player.isGrounded = false; }
+        });
+
+        let autoPlaceTimer = 0;
+        let lastTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            const delta = Math.min((now - lastTime) / 1000, 0.04);
+            lastTime = now;
+
+            if (isPlacingHold) {
+                autoPlaceTimer += delta;
+                if (autoPlaceTimer > 0.15) { placeBlock(); autoPlaceTimer = 0; }
+            }
+
+            for (let i = activeTNTs.length - 1; i >= 0; i--) {
+                const tnt = activeTNTs[i];
+                tnt.fuse -= delta;
+                tnt.flashTimer += delta * 12;
+
+                if (Math.sin(tnt.flashTimer) > 0) {
+                    tnt.mesh.material = tntWhiteMaterial;
+                } else {
+                    tnt.mesh.material = materials[1];
+                }
+
+                tnt.vel.y -= 14.0 * delta;
+                tnt.mesh.position.addScaledVector(tnt.vel, delta);
+
+                const floorY = Math.floor(tnt.mesh.position.y);
+                const checkKey = getBlockKey(Math.floor(tnt.mesh.position.x), floorY, Math.floor(tnt.mesh.position.z));
+                if (worldBlocks.has(checkKey) && tnt.vel.y < 0) {
+                    tnt.mesh.position.y = floorY + 1.0;
+                    tnt.vel.set(tnt.vel.x * 0.5, 0, tnt.vel.z * 0.5);
+                }
+
+                if (tnt.fuse <= 0) {
+                    explodeTNTEntity(tnt);
+                    activeTNTs.splice(i, 1);
+                }
+            }
+
+            for (let i = flyingDebris.length - 1; i >= 0; i--) {
+                const fb = flyingDebris[i];
+                fb.userData.life -= delta * 0.9;
+                fb.position.addScaledVector(fb.userData.vel, delta);
+                fb.userData.vel.y -= 16.0 * delta;
+                const scale = Math.max(0, fb.userData.life);
+                fb.scale.set(scale, scale, scale);
+                if (fb.userData.life <= 0) { scene.remove(fb); flyingDebris.splice(i, 1); }
+            }
+
+            player.vel.y -= 16.0 * delta;
+            player.pos.y += player.vel.y * delta;
+
+            if (checkCollision(player.pos)) {
+                if (player.vel.y < 0) {
+                    player.vel.y = 0; player.isGrounded = true;
+                    player.pos.y = Math.ceil(player.pos.y - player.height) + player.height;
+                } else player.vel.y = 0;
+            } else player.isGrounded = false;
+
+            if (moveVector.x !== 0 || moveVector.y !== 0) {
+                const currentSpeed = 4.5 * (player.isSprinting ? 1.8 : 1.0);
+                const speed = currentSpeed * delta;
+                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+                const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                const moveDir = new THREE.Vector3()
+                    .addScaledVector(forward, -moveVector.y)
+                    .addScaledVector(right, moveVector.x).normalize();
+
+                const nextX = player.pos.clone(); nextX.x += moveDir.x * speed;
+                if (!checkCollision(nextX)) player.pos.x = nextX.x;
+
+                const nextZ = player.pos.clone(); nextZ.z += moveDir.z * speed;
+                if (!checkCollision(nextZ)) player.pos.z = nextZ.z;
+            }
+
+            if (player.pos.y < -10) player.pos.set(0, 12, 0);
+
+            camera.position.copy(player.pos);
+            camera.rotation.set(0, 0, 0);
+            camera.rotateY(yaw); camera.rotateX(pitch);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
